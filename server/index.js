@@ -21,5 +21,7 @@ app.listen(PORT, async (err) => {
   } else {
     await connectDB();
     console.log(`Server listening on Port ${PORT}`);
+    console.log(`GraphQL test: localhost:${PORT}/graphql`);
+    console.log(`To see the datbase use the app MongoDB Compass`);
   }
 });
