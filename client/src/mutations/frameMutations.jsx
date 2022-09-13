@@ -18,6 +18,47 @@ const ADD_FRAME = gql`
       name
       detail
       order
+      images {
+        id
+        public_id
+        secure_url
+      }
+      serie {
+        id
+        name
+        detail
+        order
+      }
+    }
+  }
+`;
+
+const UPDATE_FRAME = gql`
+  mutation updateFrame(
+    $id: ID!
+    $name: String!
+    $detail: String!
+    $order: Int!
+    $serieId: ID!
+    $images: [String]!
+  ) {
+    updateFrame(
+      id: $id
+      name: $name
+      detail: $detail
+      order: $order
+      serieId: $serieId
+      images: $images
+    ) {
+      id
+      name
+      detail
+      order
+      images {
+        id
+        public_id
+        secure_url
+      }
       serie {
         id
         name
@@ -34,6 +75,11 @@ const DELETE_FRAME = gql`
       name
       detail
       order
+      images {
+        id
+        public_id
+        secure_url
+      }
       serie {
         id
         name
@@ -44,4 +90,4 @@ const DELETE_FRAME = gql`
   }
 `;
 
-export { DELETE_FRAME, ADD_FRAME };
+export { DELETE_FRAME, ADD_FRAME, UPDATE_FRAME };

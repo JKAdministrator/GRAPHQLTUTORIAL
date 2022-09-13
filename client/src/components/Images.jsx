@@ -10,7 +10,7 @@ export default function Images() {
   return (
     <>
       {!loading && !error && (
-        <div className="container d-flex flex-row align-items-start justify-content-start gap-3 flex-wrap">
+        <div className="container-fluid row align-items-center justify-content-center gap-3 flex-wrap">
           {data.images.map((image) => {
             return <ImageRow key={image.id} image={image} />;
           })}

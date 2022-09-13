@@ -13,6 +13,7 @@ export default function Experiences() {
     else if (a.order < b.order) return -1;
     else if (a.order === b.order) return 0;
   });
+
   return (
     <>
       {!loading && !error && (
@@ -22,6 +23,7 @@ export default function Experiences() {
               <th>Order</th>
               <th>Year</th>
               <th>Detail</th>
+              <th></th>
               <th></th>
             </tr>
           </thead>

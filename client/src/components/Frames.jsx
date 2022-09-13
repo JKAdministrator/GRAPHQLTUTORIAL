@@ -19,10 +19,12 @@ export default function Series() {
         <table className="table table-hover mt-3">
           <thead>
             <tr>
+              <th>Image</th>
               <th>Order</th>
               <th>Name</th>
               <th>Detail</th>
               <th>Serie</th>
+              <th></th>
               <th></th>
             </tr>
           </thead>

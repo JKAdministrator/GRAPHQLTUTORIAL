@@ -1,5 +1,4 @@
 import { useQuery } from "@apollo/client";
-import { useState } from "react";
 import Spinner from "../components/Spinner";
 
 import { GET_USAGE } from "../queries/CloudinaryUsage";

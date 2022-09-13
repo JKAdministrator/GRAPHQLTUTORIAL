@@ -9,6 +9,21 @@ const ADD_EXPERIENCE = gql`
     }
   }
 `;
+const UPDATE_EXPERIENCE = gql`
+  mutation updateExperience(
+    $id: ID!
+    $detail: String!
+    $year: String!
+    $order: Int!
+  ) {
+    updateExperience(id: $id, detail: $detail, year: $year, order: $order) {
+      id
+      detail
+      year
+      order
+    }
+  }
+`;
 const DELETE_EXPERIENCE = gql`
   mutation deleteExperience($id: ID!) {
     deleteExperience(id: $id) {
@@ -20,4 +35,4 @@ const DELETE_EXPERIENCE = gql`
   }
 `;
 
-export { DELETE_EXPERIENCE, ADD_EXPERIENCE };
+export { DELETE_EXPERIENCE, ADD_EXPERIENCE, UPDATE_EXPERIENCE };

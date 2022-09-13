@@ -1,15 +1,33 @@
 import { useState } from "react";
 import { FaRegNewspaper } from "react-icons/fa";
 import { useQuery, useMutation } from "@apollo/client";
-import { GET_EXPERIENCES } from "../queries/experienceQueries";
-import { ADD_EXPERIENCE } from "../mutations/experienceMutations";
-export default function AddExperienceModal() {
+import { GET_EXPERIENCES, GET_EXPERIENCE } from "../queries/experienceQueries";
+import {
+  ADD_EXPERIENCE,
+  UPDATE_EXPERIENCE,
+} from "../mutations/experienceMutations";
+import { useEffect } from "react";
+import { useRef } from "react";
+import { useCallback } from "react";
+import { useLazyQuery } from "@apollo/client";
+
+export default function ExperienceModal() {
   const [detail, setDetail] = useState("");
   const [year, setYear] = useState("");
-  const [order, setOrder] = useState(0);
+  const [order, setOrder] = useState("");
+  const [experienceId, setExperienceId] = useState("");
+
+  const experienceModalRef = useRef();
+
+  const [getExperienceData, { loading, error, data }] =
+    useLazyQuery(GET_EXPERIENCE);
 
   const [addExperience] = useMutation(ADD_EXPERIENCE, {
-    variables: { detail, year, order: parseInt(order) },
+    variables: {
+      detail: detail,
+      year: year,
+      order: parseInt(order),
+    },
     update(cache, { data: { addExperience } }) {
       const { experiences } = cache.readQuery({
         query: GET_EXPERIENCES,
@@ -21,31 +39,70 @@ export default function AddExperienceModal() {
     },
   });
 
+  const [updateExperience] = useMutation(UPDATE_EXPERIENCE, {
+    variables: {
+      id: experienceId,
+      detail: detail,
+      year: year,
+      order: parseInt(order),
+    },
+    update(cache, { data: { updateExperience } }) {
+      console.log("updating cache");
+      let { experiences } = cache.readQuery({
+        query: GET_EXPERIENCES,
+      });
+
+      const filteredExperiences = experiences.filter((e) => {
+        return e.id !== experienceId;
+      });
+      cache.writeQuery({
+        query: GET_EXPERIENCES,
+        data: { experiences: [...filteredExperiences, updateExperience] },
+      });
+    },
+  });
+
   const onSubmit = (e) => {
     e.preventDefault();
-    if (detail === "" || year === "" || order === "") {
-      return alert("Please fill in all fields");
-    }
-    addExperience(detail, year, order);
+    if (experienceId === "") addExperience(detail, year, order);
+    else updateExperience(experienceId, detail, year, order);
     setDetail("");
     setYear("");
-    setOrder(0);
+    setOrder("");
+    setExperienceId("");
   };
+
+  const onExperienceModalOpen = useCallback((event) => {
+    setExperienceId(event.relatedTarget.getAttribute("data-bs-experience-id"));
+  }, []);
+
+  useEffect(() => {
+    if (experienceModalRef)
+      experienceModalRef?.current?.addEventListener(
+        "show.bs.modal",
+        onExperienceModalOpen
+      );
+  }, []);
+
+  useEffect(() => {
+    if (experienceId.length > 0) {
+      getExperienceData({ variables: { id: experienceId } }).then((results) => {
+        if (results?.data?.experience) {
+          const experienceData = results?.data?.experience;
+          setDetail(experienceData.detail ? experienceData.detail : "");
+          setYear(experienceData.year ? experienceData.year : "");
+          setOrder(experienceData.order ? experienceData.order : "");
+        }
+      });
+    } else {
+      setDetail("");
+      setYear("");
+      setOrder("");
+    }
+  }, [experienceId]);
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        data-bs-toggle="modal"
-        data-bs-target="#addExperienceModal"
-      >
-        <div className="d-flex align-items-center">
-          <FaRegNewspaper className="icon" />
-          <div>Add Experience</div>
-        </div>
-      </button>
-
       <div
         className="modal fade"
         show="true"
@@ -55,12 +112,13 @@ export default function AddExperienceModal() {
         data-bs-backdrop="static"
         data-bs-keyboard="false"
         tabIndex="-1"
+        ref={experienceModalRef}
       >
         <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-md-down">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title" id="addExperienceModalLabel">
-                Add Experience
+                {experienceId ? "Edit Experience" : "Add Experience"}
               </h5>
               <button
                 type="button"
@@ -79,7 +137,9 @@ export default function AddExperienceModal() {
                     id="order"
                     value={order}
                     autoComplete="off"
-                    onChange={(e) => setOrder(e.target.value)}
+                    onChange={(e) => {
+                      setOrder(e.target.value);
+                    }}
                   />
                 </div>
                 <div className="mb-3">
@@ -90,7 +150,9 @@ export default function AddExperienceModal() {
                     id="year"
                     value={year}
                     autoComplete="off"
-                    onChange={(e) => setYear(e.target.value)}
+                    onChange={(e) => {
+                      setYear(e.target.value);
+                    }}
                   />
                 </div>
                 <div className="mb-3">
@@ -101,7 +163,9 @@ export default function AddExperienceModal() {
                     id="detail"
                     value={detail}
                     autoComplete="off"
-                    onChange={(e) => setDetail(e.target.value)}
+                    onChange={(e) => {
+                      setDetail(e.target.value);
+                    }}
                   />
                 </div>
                 <button

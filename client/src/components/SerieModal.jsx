@@ -1,12 +1,21 @@
 import { useState } from "react";
 import { FaImages, FaUser } from "react-icons/fa";
 import { useQuery, useMutation } from "@apollo/client";
-import { GET_SERIES } from "../queries/serieQueries";
-import { ADD_SERIE } from "../mutations/serieMutations";
+import { GET_SERIES, GET_SERIE } from "../queries/serieQueries";
+import { ADD_SERIE, UPDATE_SERIE } from "../mutations/serieMutations";
+import { useEffect } from "react";
+import { useRef } from "react";
+import { useCallback } from "react";
+import { useLazyQuery } from "@apollo/client";
 export default function AddSerieModal() {
   const [detail, setDetail] = useState("");
   const [name, setName] = useState("");
   const [order, setOrder] = useState(0);
+  const [serieId, setSerieId] = useState("");
+
+  const serieModalRef = useRef();
+
+  const [getSerieData, { loading, error, data }] = useLazyQuery(GET_SERIE);
 
   const [addSerie] = useMutation(ADD_SERIE, {
     variables: { detail, name, order: parseInt(order) },
@@ -21,31 +30,69 @@ export default function AddSerieModal() {
     },
   });
 
+  const [updateSerie] = useMutation(UPDATE_SERIE, {
+    variables: {
+      id: serieId,
+      detail: detail,
+      name: name,
+      order: parseInt(order),
+    },
+    update(cache, { data: { updateSerie } }) {
+      let { series } = cache.readQuery({
+        query: GET_SERIES,
+      });
+
+      const filteredSeries = series.filter((e) => {
+        return e.id !== serieId;
+      });
+      cache.writeQuery({
+        query: GET_SERIES,
+        data: { series: [...filteredSeries, updateSerie] },
+      });
+    },
+  });
+
   const onSubmit = (e) => {
     e.preventDefault();
-    if (detail === "" || name === "" || order === "") {
-      return alert("Please fill in all fields");
-    }
-    addSerie(detail, name, order);
+    if (serieId === "") addSerie(detail, name, order);
+    else updateSerie(serieId, detail, name, order);
     setDetail("");
     setName("");
-    setOrder(0);
+    setOrder("");
+    setSerieId("");
   };
+
+  const onSerieModalOpen = useCallback((event) => {
+    setSerieId(event.relatedTarget.getAttribute("data-bs-serie-id"));
+  }, []);
+
+  useEffect(() => {
+    if (serieModalRef)
+      serieModalRef?.current?.addEventListener(
+        "show.bs.modal",
+        onSerieModalOpen
+      );
+  }, []);
+
+  useEffect(() => {
+    if (serieId.length > 0) {
+      getSerieData({ variables: { id: serieId } }).then((results) => {
+        if (results?.data?.serie) {
+          const serieData = results?.data?.serie;
+          setDetail(serieData.detail ? serieData.detail : "");
+          setName(serieData.name ? serieData.name : "");
+          setOrder(serieData.order ? serieData.order : "");
+        }
+      });
+    } else {
+      setDetail("");
+      setName("");
+      setOrder("");
+    }
+  }, [serieId]);
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        data-bs-toggle="modal"
-        data-bs-target="#addSerieModal"
-      >
-        <div className="d-flex align-items-center">
-          <FaImages className="icon" />
-          <div>Add Serie</div>
-        </div>
-      </button>
-
       <div
         className="modal fade"
         id="addSerieModal"
@@ -54,12 +101,13 @@ export default function AddSerieModal() {
         data-bs-backdrop="static"
         data-bs-keyboard="false"
         tabIndex="-1"
+        ref={serieModalRef}
       >
         <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-md-down">
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title" id="addSerieModalLabel">
-                Add Serie
+                {serieId ? "Edit Serie" : "Add Serie"}
               </h5>
               <button
                 type="button"

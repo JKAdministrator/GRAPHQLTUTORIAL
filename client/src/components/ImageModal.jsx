@@ -7,7 +7,7 @@ import { FaRegFileImage, FaTrash, FaCloudUploadAlt } from "react-icons/fa";
 import ImageUploading from "react-images-uploading";
 
 const MAX_IMAGE_FOR_FRAME_NUMBER = 1;
-export default function AddImageModal() {
+export default function ImageModal() {
   const [publicId, setPublicId] = useState("");
   const [secureUrl, setSecureUrl] = useState("");
   const [images, setImages] = useState([]);
@@ -47,18 +47,6 @@ export default function AddImageModal() {
 
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        data-bs-toggle="modal"
-        data-bs-target="#addImageModal"
-      >
-        <div className="d-flex align-items-center">
-          <FaRegFileImage className="icon" />
-          <div>Add Image</div>
-        </div>
-      </button>
-
       <div
         className="modal fade"
         id="addImageModal"

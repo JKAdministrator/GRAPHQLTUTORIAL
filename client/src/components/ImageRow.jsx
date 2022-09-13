@@ -1,4 +1,4 @@
-import { FaTrash, FaEllipsisH, FaEdit } from "react-icons/fa";
+import { FaTrash, FaEllipsisH, FaRegEye } from "react-icons/fa";
 import { useMutation } from "@apollo/client";
 import { DELETE_IMAGE } from "../mutations/imageMutations";
 import { GET_IMAGES } from "../queries/imageQueries";
@@ -15,7 +15,7 @@ export default function ImageRow({ image }) {
   return (
     <figure
       className={`figure border ${isHover ? "shadow" : ""} bg-body rounded`}
-      style={{ position: "relative", width: "32%", height: "15rem" }}
+      style={{ position: "relative", width: "auto", height: "15rem" }}
       onMouseEnter={() => setIsHover(true)}
       onMouseLeave={() => setIsHover(false)}
     >
@@ -47,19 +47,26 @@ export default function ImageRow({ image }) {
           </a>
 
           <ul className="dropdown-menu">
-            <li>
-              <button className="dropdown-item d-flex flex-row gap-2 align-items-center">
-                <FaEdit className="icon" />
-                <label>Edit</label>
+            <li style={{ cursor: "pointer" }}>
+              <button
+                className="dropdown-item d-flex flex-row gap-2 align-items-center"
+                title="View Image in full size"
+                data-bs-toggle="modal"
+                data-bs-target="#imageViewModal"
+                data-bs-image-id={image.id}
+              >
+                <FaRegEye className="icon" style={{ pointerEvents: "none" }} />
+                <label style={{ pointerEvents: "none" }}>View</label>
               </button>
             </li>
-            <li>
+            <li style={{ cursor: "pointer" }}>
               <button
                 className="dropdown-item  d-flex flex-row gap-2 align-items-center"
                 onClick={deleteImage}
+                title="Delete Image"
               >
-                <FaTrash className="icon" />
-                <label>Delete</label>
+                <FaTrash className="icon" style={{ pointerEvents: "none" }} />
+                <label style={{ pointerEvents: "none" }}>Delete</label>
               </button>
             </li>
           </ul>

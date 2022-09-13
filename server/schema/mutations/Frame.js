@@ -31,8 +31,12 @@ const FrameMutations = {
         //save to database
         let frameDocument = await frame.save();
         // update all images with the frame id
-        const sections = await Images.updateMany(
-          { _id: { $in: args.images } },
+        await Image.updateMany(
+          {
+            _id: {
+              $in: args.images,
+            },
+          },
           { frameId: frameDocument._id }
         );
         //return the frame document
@@ -50,20 +54,47 @@ const FrameMutations = {
       detail: { type: GraphQLNonNull(GraphQLString) },
       order: { type: GraphQLNonNull(GraphQLInt) },
       serieId: { type: GraphQLNonNull(GraphQLID) },
+      images: { type: GraphQLList(GraphQLString) },
     },
-    resolve(parent, args) {
-      return Frame.findByIdAndUpdate(
-        args.id,
-        {
-          $set: {
-            name: args.name,
-            detail: args.detail,
-            order: args.order,
-            serieId: args.serieId,
+    async resolve(parent, args) {
+      try {
+        // update all images that where from this frame to empty frame
+        await Image.updateMany(
+          {
+            frameId: {
+              $in: args.id,
+            },
           },
-        },
-        { new: true }
-      );
+          { $unset: { frameId: 1 } }
+        );
+
+        // update all images with the frame id
+        await Image.updateMany(
+          {
+            _id: {
+              $in: args.images,
+            },
+          },
+          { frameId: args.id }
+        );
+
+        console.log("images updated");
+        return Frame.findByIdAndUpdate(
+          args.id,
+          {
+            $set: {
+              name: args.name,
+              detail: args.detail,
+              order: args.order,
+              serieId: args.serieId,
+            },
+          },
+          { new: true }
+        );
+      } catch (e) {
+        console.log("error");
+        throw e;
+      }
     },
   },
   deleteFrame: {
@@ -71,8 +102,22 @@ const FrameMutations = {
     args: {
       id: { type: GraphQLNonNull(GraphQLID) },
     },
-    resolve(parent, args) {
-      return Frame.findByIdAndRemove(args.id);
+    async resolve(parent, args) {
+      // update all images with the frame id
+      try {
+        await Image.updateMany(
+          {
+            frameId: {
+              $in: args.id,
+            },
+          },
+          { $unset: { frameId: 1 } }
+        );
+
+        return Frame.findByIdAndRemove(args.id);
+      } catch (e) {
+        throw e;
+      }
     },
   },
 };

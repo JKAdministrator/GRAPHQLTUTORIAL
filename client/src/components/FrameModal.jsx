@@ -1,27 +1,49 @@
-import { useState, useRef } from "react";
-import { FaUser, FaRegFileImage, FaImage } from "react-icons/fa";
+import { useState, useRef, useCallback } from "react";
+import { FaRegFileImage, FaImage } from "react-icons/fa";
 
 import { useQuery, useMutation } from "@apollo/client";
-import { GET_FRAMES } from "../queries/frameQueries";
+import { GET_FRAMES, GET_FRAME } from "../queries/frameQueries";
 import { GET_SERIES } from "../queries/serieQueries";
 import { GET_IMAGES } from "../queries/imageQueries";
-import { ADD_FRAME } from "../mutations/frameMutations";
+import { ADD_FRAME, UPDATE_FRAME } from "../mutations/frameMutations";
 import Spinner from "./Spinner";
 import { useEffect } from "react";
 
-export default function AddFrameModal() {
+import { useLazyQuery } from "@apollo/client";
+export default function FrameModal() {
   const [detail, setDetail] = useState("");
   const [name, setName] = useState("");
   const [order, setOrder] = useState(0);
   const [serieId, setSerieId] = useState("");
-  const [images, setImages] = useState([]);
+  const [frameId, setFrameId] = useState("");
   const [selectedImages, setSelectedImages] = useState([]);
-  const modalRef = useRef();
+  const [newSelectedImages, setNewSelectedImages] = useState([]);
+  const [seriesData, setSeriesData] = useState([]);
+  const frameModalRef = useRef();
 
-  useEffect(() => {
-    console.log("SELECTED IMAGES CHANGE", { selectedImages });
-  }, [selectedImages]);
-  const { loading, error, data } = useQuery(GET_SERIES);
+  const cleanComponentData = () => {
+    console.log("cleanComponentData");
+    setDetail("");
+    setName("");
+    setOrder(0);
+    setSerieId("");
+    setSelectedImages([]);
+    setNewSelectedImages([]);
+    setFrameId("");
+  };
+
+  const [
+    getFrameData,
+    {
+      loading: loadingFrameQuery,
+      error: errorFrameQuery,
+      data: dataFrameQuery,
+    },
+  ] = useLazyQuery(GET_FRAME);
+
+  const [getSeriesData, { loading: loading, error: error, data: data }] =
+    useLazyQuery(GET_SERIES);
+
   const {
     loading: loadingImages,
     error: errorImages,
@@ -34,8 +56,8 @@ export default function AddFrameModal() {
       name,
       order: parseInt(order),
       serieId,
-      images: images.map((i) => {
-        return i.data_url; // base64 data
+      images: selectedImages.map((i) => {
+        return i.id;
       }),
     },
     update(cache, { data: { addFrame } }) {
@@ -49,63 +71,121 @@ export default function AddFrameModal() {
     },
   });
 
+  const [updateFrame] = useMutation(UPDATE_FRAME, {
+    variables: {
+      id: frameId,
+      detail: detail,
+      name: name,
+      order: parseInt(order),
+      serieId: serieId,
+      images: selectedImages.map((i) => {
+        return i.id;
+      }),
+    },
+    update(cache, { data: { updateFrame } }) {
+      let { frames } = cache.readQuery({
+        query: GET_FRAMES,
+      });
+
+      const filteredFrames = frames.filter((e) => {
+        return e.id !== frameId;
+      });
+      cache.writeQuery({
+        query: GET_FRAMES,
+        data: { frames: [...filteredFrames, updateFrame] },
+      });
+    },
+  });
+
   const onSubmit = (e) => {
     e.preventDefault();
-    if (
-      detail === "" ||
-      name === "" ||
-      order === "" ||
-      serieId === "" ||
-      images.length === 0
-    ) {
-      return false;
-    }
-    addFrame(detail, name, order, serieId, images);
-    setDetail("");
-    setName("");
-    setOrder(0);
-    setSerieId("");
-    setImages([]);
+    if (frameId === "") addFrame(detail, name, order, serieId, selectedImages);
+    else updateFrame(frameId, detail, name, order, serieId, selectedImages);
+    cleanComponentData();
     return true;
   };
 
-  if (error || errorImages) return <p>Something went wrong</p>;
-  if (loading || loadingImages) return <Spinner />;
+  const onFrameModalOpen = (event) => {
+    setFrameId(event.relatedTarget.getAttribute("data-bs-frame-id"));
+  };
 
-  const sortedSeries = [...data.series].sort((a, b) => {
-    if (a.name > b.name) return 1;
-    else if (a.name < b.name) return -1;
-    else if (a.name === b.name) return 0;
-  });
+  useEffect(() => {
+    console.log("useEffect for component created");
+
+    if (frameModalRef) {
+      getSeriesData().then((results) => {
+        const seriesData = results?.data?.series ? results?.data?.series : [];
+        const sortedSeries = [...seriesData].sort((a, b) => {
+          if (a.name > b.name) return 1;
+          else if (a.name < b.name) return -1;
+          else if (a.name === b.name) return 0;
+          return 0;
+        });
+        setSeriesData(sortedSeries);
+
+        frameModalRef?.current?.addEventListener(
+          "show.bs.modal",
+          onFrameModalOpen
+        );
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log("useEffect for frameId ", { frameId });
+    if (frameId?.length > 0) {
+      getFrameData({ variables: { id: frameId } }).then((results) => {
+        if (results?.data?.frame) {
+          const frameData = results?.data?.frame;
+          setName(frameData.name ? frameData.name : "");
+          setOrder(frameData.order ? frameData.order : "");
+          setDetail(frameData.detail ? frameData.detail : "");
+          setSerieId(frameData.serie?.id ? frameData.serie?.id : "");
+          setSelectedImages(frameData.images ? frameData.images : []);
+          setNewSelectedImages(frameData.images ? frameData.images : []);
+        }
+      });
+    } else {
+      cleanComponentData();
+    }
+  }, [frameId]);
 
   const onFrameImageClick = (e) => {
+    console.log("onFrameImageClick()");
     e.preventDefault();
     const imageKey = e.target.getAttribute("data-key");
-    setSelectedImages((prevSelectedImages) => {
-      const imageSelectedIndex = selectedImages.indexOf(imageKey);
-      if (imageSelectedIndex === -1) return [...prevSelectedImages, imageKey];
+    const imageSecureUrl = e.target.getAttribute("data-secure-url");
+    setNewSelectedImages((prevNewSelectedImages) => {
+      const imageSelectedIndex = newSelectedImages.findIndex((img) => {
+        return imageKey === img.id;
+      });
+      if (imageSelectedIndex === -1)
+        return [
+          ...prevNewSelectedImages,
+          { id: imageKey, secure_url: imageSecureUrl },
+        ];
       else {
-        let newSelectedImages = [...prevSelectedImages];
-        newSelectedImages.splice(imageSelectedIndex, 1);
-        return newSelectedImages;
+        let images = [...prevNewSelectedImages];
+        images.splice(imageSelectedIndex, 1);
+        return images;
       }
     });
   };
 
+  const onChangeImagesClick = (e) => {
+    console.log("onChangeImagesClick()");
+    setSelectedImages(newSelectedImages);
+    //setFrameId(frameId);
+  };
+
+  const onChangeImagesCancelClick = (e) => {
+    console.log("onChangeImagesCancelClick()");
+    setNewSelectedImages(selectedImages);
+    //setFrameId(frameId);
+  };
+
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-secondary"
-        data-bs-toggle="modal"
-        data-bs-target="#addFrameModal"
-      >
-        <div className="d-flex align-items-center">
-          <FaImage className="icon" />
-          <div>Add Frame</div>
-        </div>
-      </button>
-
       <div
         className="modal fade"
         id="addFrameModal"
@@ -115,14 +195,10 @@ export default function AddFrameModal() {
         data-bs-backdrop="static"
         data-bs-keyboard="false"
         tabIndex="-1"
-        ref={modalRef}
+        ref={frameModalRef}
       >
         <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-md-down">
-          <form
-            onSubmit={onSubmit}
-            autoComplete="off"
-            className="modal-content needs-validation"
-          >
+          <form autoComplete="off" className="modal-content needs-validation">
             <div className="modal-header">
               <h5 className="modal-title" id="addFrameModalLabel">
                 Add Frame
@@ -132,6 +208,7 @@ export default function AddFrameModal() {
                 className="btn-close"
                 data-bs-dismiss="modal"
                 aria-label="Close"
+                onClick={cleanComponentData}
               ></button>
             </div>
 
@@ -183,8 +260,9 @@ export default function AddFrameModal() {
                   onChange={(e) => setSerieId(e.target.value)}
                   required
                 >
-                  {sortedSeries &&
-                    sortedSeries.map((serie) => {
+                  <option key="NO_SERIE" value=""></option>
+                  {seriesData &&
+                    seriesData.map((serie) => {
                       return (
                         <option key={serie.id} value={serie.id}>
                           {serie.name}
@@ -193,6 +271,32 @@ export default function AddFrameModal() {
                     })}
                 </select>
               </div>
+              <div
+                className="mb-3 d-flex flex-row align-items-center justify-content-start gap-2"
+                style={{
+                  maxWidth: "100%",
+                  overflowY: "auto",
+                }}
+              >
+                {selectedImages.map((imageData) => {
+                  return (
+                    <img
+                      key={imageData.id}
+                      src={imageData.secure_url}
+                      alt=""
+                      style={{
+                        pointerEvents: "none",
+                        width: "8rem",
+                        opacity: "1.0",
+                        height: "auto",
+                        objectFit: "scale-down",
+                        objectPosition: "center",
+                      }}
+                    />
+                  );
+                })}
+              </div>
+
               <div className="mb-3">
                 <button
                   type="button"
@@ -213,6 +317,7 @@ export default function AddFrameModal() {
                 type="submit"
                 className="btn btn-secondary"
                 data-bs-dismiss="modal"
+                onClick={onSubmit}
               >
                 Submit
               </button>
@@ -230,14 +335,9 @@ export default function AddFrameModal() {
         data-bs-backdrop="static"
         data-bs-keyboard="false"
         tabIndex="-1"
-        ref={modalRef}
       >
         <div className="modal-dialog modal-dialog-scrollable modal-fullscreen-md-down">
-          <div
-            onSubmit={onSubmit}
-            autoComplete="off"
-            className="modal-content needs-validation"
-          >
+          <div autoComplete="off" className="modal-content needs-validation">
             <div className="modal-header">
               <h5 className="modal-title" id="addImageToFrameModalLabel">
                 Set Frame Images
@@ -248,13 +348,14 @@ export default function AddFrameModal() {
                 className="btn-close"
                 data-bs-target="#addFrameModal"
                 data-bs-toggle="modal"
+                data-bs-frame-id={frameId}
+                onClick={onChangeImagesCancelClick}
               ></button>
             </div>
             <div className="modal-body">
               <div className="container text-center p-0">
                 <div className="row row-cols-3">
-                  {console.log("images", dataImages.images)}
-                  {dataImages?.images &&
+                  {dataImages &&
                     dataImages.images.map((imageData) => {
                       return (
                         <div
@@ -265,6 +366,7 @@ export default function AddFrameModal() {
                             cursor: "pointer",
                           }}
                           data-key={imageData.id}
+                          data-secure-url={imageData["secure_url"]}
                           onClick={onFrameImageClick}
                         >
                           <img
@@ -272,19 +374,25 @@ export default function AddFrameModal() {
                             alt=""
                             width="100"
                             className={`border ${
-                              selectedImages.indexOf(imageData.id) > -1
+                              newSelectedImages.findIndex((i) => {
+                                return imageData.id === i.id;
+                              }) > -1
                                 ? "border-success border-5 shadow"
                                 : ""
                             } `}
                             style={{
                               pointerEvents: "none",
                               width: ` ${
-                                selectedImages.indexOf(imageData.id) > -1
+                                newSelectedImages.findIndex((i) => {
+                                  return imageData.id === i.id;
+                                }) > -1
                                   ? "100%"
                                   : "80%"
                               }`,
                               opacity: ` ${
-                                selectedImages.indexOf(imageData.id) > -1
+                                newSelectedImages.findIndex((i) => {
+                                  return imageData.id === i.id;
+                                }) > -1
                                   ? "1.0"
                                   : "0.7"
                               }`,
@@ -305,6 +413,8 @@ export default function AddFrameModal() {
                 className="btn btn-secondary"
                 data-bs-target="#addFrameModal"
                 data-bs-toggle="modal"
+                data-bs-frame-id={frameId}
+                onClick={onChangeImagesClick}
               >
                 Save
               </button>

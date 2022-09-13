@@ -3,7 +3,7 @@ const FrameType = require("../types/Frame");
 
 const { GraphQLID, GraphQLList } = require("graphql");
 
-const SerieQueries = {
+const FrameQueries = {
   frame: {
     type: FrameType,
     args: { id: { type: GraphQLID } },
@@ -19,4 +19,4 @@ const SerieQueries = {
   },
 };
 
-module.exports = SerieQueries;
+module.exports = FrameQueries;

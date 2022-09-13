@@ -40,7 +40,6 @@ const SerieMutations = {
             name: args.name,
             detail: args.detail,
             order: args.order,
-            serieId: args.serieId,
           },
         },
         { new: true }
@@ -52,8 +51,21 @@ const SerieMutations = {
     args: {
       id: { type: GraphQLNonNull(GraphQLID) },
     },
-    resolve(parent, args) {
-      return Serie.findByIdAndRemove(args.id);
+    async resolve(parent, args) {
+      try {
+        await Frame.updateMany(
+          {
+            serieId: {
+              $in: args.id,
+            },
+          },
+          { $unset: { serieId: 1 } }
+        );
+
+        return Serie.findByIdAndRemove(args.id);
+      } catch (e) {
+        throw e;
+      }
     },
   },
 };

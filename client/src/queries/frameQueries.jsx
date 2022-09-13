@@ -6,6 +6,11 @@ const GET_FRAMES = gql`
       name
       detail
       order
+      images {
+        id
+        public_id
+        secure_url
+      }
       serie {
         id
         name
@@ -21,6 +26,11 @@ const GET_FRAME = gql`
       name
       detail
       order
+      images {
+        id
+        public_id
+        secure_url
+      }
       serie {
         id
         name

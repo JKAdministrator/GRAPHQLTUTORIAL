@@ -9,6 +9,21 @@ const ADD_SERIE = gql`
     }
   }
 `;
+const UPDATE_SERIE = gql`
+  mutation updateSerie(
+    $id: ID!
+    $detail: String!
+    $name: String!
+    $order: Int!
+  ) {
+    updateSerie(id: $id, detail: $detail, name: $name, order: $order) {
+      id
+      detail
+      name
+      order
+    }
+  }
+`;
 const DELETE_SERIE = gql`
   mutation deleteSerie($id: ID!) {
     deleteSerie(id: $id) {
@@ -20,4 +35,4 @@ const DELETE_SERIE = gql`
   }
 `;
 
-export { DELETE_SERIE, ADD_SERIE };
+export { DELETE_SERIE, ADD_SERIE, UPDATE_SERIE };
